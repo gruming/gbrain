@@ -1,0 +1,39 @@
+name: sync-upstream
+
+# Mirrors garrytan/gbrain@master into this fork's master branch.
+# The push that this job performs is what triggers Railway's auto-deploy
+# for gbrain-server and gbrain-si-server.
+#
+# master is kept as a pure mirror of upstream, so this workflow lives on the
+# `ci` branch (the repository default) instead. Scheduled workflows only run
+# from the default branch.
+
+on:
+  schedule:
+    # 매주 월요일 03:00 KST (= 일요일 18:00 UTC)
+    - cron: '0 18 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror upstream master
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --bare --single-branch --branch master \
+            https://github.com/garrytan/gbrain.git upstream.git
+          cd upstream.git
+          echo "upstream master: $(git rev-parse master)"
+          git push --force \
+            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            master:master
